@@ -8,13 +8,13 @@ def loading_test_train_set(config, fold = None):
     if fold is not None:
         config['experiment']['fold']  = fold
         
-    if not os.path.exists(os.path.join(config['path']['data_dir_path'], 'full_set_data.npy')):
+    if not os.path.exists(os.path.join(config['path']['data_dir_path'], 'full_set_data_normed.npy')):
 
         # --------------Save Original Images from MAT File-------------#
         T1Dataset210_dict = mat73.loadmat(os.path.join(config['path']['data_dir_path'],'T1Dataset210.mat'))
         Dataset_dict = T1Dataset210_dict['Dataset']
         Images = Dataset_dict['Img']
-        Images = np.stack(Images, axis=0)[:, 0, :, :, :, :]
+        Images = np.stack(Images, axis=0)[:, 0, :, :, :, :]# 210, 320, 320, 11,5 -> ncases, nx, ny, nt, nslices?
         EndoContours = Dataset_dict['EndoContours']
         EndoContours = np.stack(EndoContours, axis=0)[:, 0, :, :, :, :]
         EpiContours = Dataset_dict['EpiContours']
@@ -25,22 +25,22 @@ def loading_test_train_set(config, fold = None):
         # ------------------------Crop Images and contours-------------------------#
         segmentation = preprocess_contours(EpiContours,EndoContours, [Images.shape[1],Images.shape[2]])
         del Dataset_dict; del T1Dataset210_dict
-        Images, norm_matrix = normImages(Images)
+        # Images, norm_matrix = normImages(Images)
         seg_mask_all = np.where(np.sum(np.sum(np.sum(segmentation[:,:,:,:,:],axis=0),axis=2),axis=2) > 1 , 1 , 0)
         segmentation, _ = crop_images(segmentation, seg_mask_all=seg_mask_all)
         DownSampleImages, numPatients = crop_images(Images, seg_mask_all=seg_mask_all)
         del Images;  del seg_mask_all
 
-        np.save(os.path.join(config['path']['data_dir_path'], 'full_set_data.npy'),DownSampleImages)
-        np.save(os.path.join(config['path']['data_dir_path'], 'full_set_trigger_time.npy'), TriggerTimes)
-        np.save(os.path.join(config['path']['data_dir_path'], 'full_set_segmentation.npy'), segmentation)
-        np.save(os.path.join(config['path']['data_dir_path'], 'full_norm_matrix.npy'), norm_matrix)
+        #np.save(os.path.join(config['path']['data_dir_path'], 'full_set_data.npy'),DownSampleImages)
+        #np.save(os.path.join(config['path']['data_dir_path'], 'full_set_trigger_time.npy'), TriggerTimes)
+        #np.save(os.path.join(config['path']['data_dir_path'], 'full_set_segmentation.npy'), segmentation)
+        #np.save(os.path.join(config['path']['data_dir_path'], 'full_norm_matrix.npy'), norm_matrix)
 
 
-    data_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_set_data.npy'))
-    trigger_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_set_trigger_time.npy'))
-    segmentation_set= np.load(os.path.join(config['path']['data_dir_path'], 'full_set_segmentation.npy'))
-    norm_matrix_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_norm_matrix.npy'))
+    data_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_set_data_normed.npy'))[:180]
+    trigger_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_set_trigger_time.npy'))[:180]
+    segmentation_set= np.load(os.path.join(config['path']['data_dir_path'], 'full_set_segmentation.npy'))[:180]
+    norm_matrix_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_norm_matrix.npy'))[:180]
 
     data = {}
     if config['experiment']['fold'] =='all':
@@ -80,6 +80,19 @@ def loading_test_train_set(config, fold = None):
 
     return data
 
+def load_test_set(config):
+    data = {}
+    data_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_set_data_normed.npy'))[180:]
+    trigger_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_set_trigger_time.npy'))[180:]
+    segmentation_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_set_segmentation.npy'))[180:]
+    norm_matrix_set = np.load(os.path.join(config['path']['data_dir_path'], 'full_norm_matrix.npy'))[180:]
+    
+    data['test_set_data'] = data_set
+    data['test_set_trigger_time'] = trigger_set
+    data['test_set_segmentation'] = segmentation_set
+    data['test_set_norm_matrix'] = norm_matrix_set
+    data['test_ind'] = np.arange(data_set.shape[0])
+    return data
 
 
 def down_sample_image(Img, xDownSampFactor, yDownSampFactor):
@@ -122,6 +135,7 @@ def crop_images(images, xDownSampFactor=2, yDownSampFactor=2, seg_mask_all=None)
     return cropped_img, numPatients
 
 def normImages(Images, Normilze_per_t=True):
+    # nsub * nx * ny * nt * nslices 210*320*320*11*5
         normalizaed_images = np.zeros_like(Images)
         # (P,T,(Max,Min))
         norm_matrix =np.zeros((Images.shape[0],Images.shape[3],2))
@@ -138,6 +152,7 @@ def normImage(Img):
     if norm_ver == 1:
         normImg = np.zeros_like(Img)
         for t in range(Img.shape[2]):
+            # here is normalized using the max and min of the whole volume (due to different time frame)
             normImg[:, :, t, :] = (Img[:, :, t, :] - np.min(Img[:, :, t, :])) / (
                         np.max(Img[:, :, t, :]) - np.min(Img[:, :, t, :]))
             norm_array[t,0] = np.max(Img[:, :, t, :])

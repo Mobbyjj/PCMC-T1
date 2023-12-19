@@ -1,15 +1,15 @@
 # miccai.yaml
 # paths
 path:
-  models_dir: models/
+  models_dir: /media/ssd/fanwen/T1mapping/Free_breathing/Model/
   load_model: None
   data_dir_path: /media/ssd/fanwen/T1mapping/Free_breathing/
 
 # Hyperparameters for model training
 training:
-  lambda_L2: 1
-  lambda_T1: 0
-  lambda_MI: 1
+  lambda_L2: 500
+  lambda_T1: 1
+  lambda_MI: 0
   lambda_Dice: 0
 
 # Model architecture
@@ -20,7 +20,7 @@ arch:
 # Experiment and run settings
 experiment:
   fold: 4 #1/2/3/4/5/'all'
-  date_ver: "ismrm"
+  date_ver: "miccai_nodice"
   mode: "train"  # Options: train / overfit / solver
   test_batch_size: 10
   train_batch_size: 40
@@ -39,11 +39,11 @@ data_loader:
   mode: original_mat #original_mat or processed_npy
 
 evaluation:
-  models_path: models/
+  models_path: /media/ssd/fanwen/T1mapping/Free_breathing/Model/
   # models_names: ['model_group_2602_ver05_KFold0_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_0',\
   #               'model_group_2602_ver05_KFold1_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_1',\
   #               'model_group_2602_ver05_KFold2_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_2',\
   #               'model_group_2602_ver05_KFold3_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_3',\
   #               'model_group_2602_ver05_KFold4_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_4']
-  models_names: ['model_ISMRM']
+  models_names: ['model_MICCAI_NODICE']
   

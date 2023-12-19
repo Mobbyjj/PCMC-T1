@@ -197,7 +197,7 @@ class PCMC(LoadableModel):
 
         # internal flag indicating whether to return flow or integrated warp during inference
         self.training = True
-        self.flows_number = src_feats + trg_feats 
+        self.flows_number = src_feats + trg_feats # src_feats = 11, trg_feats = 0 -> groupwise
         # device handling
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -212,7 +212,7 @@ class PCMC(LoadableModel):
             infeats=(src_feats + trg_feats),
             nb_features=nb_unet_features,
             nb_levels=nb_unet_levels,
-            feat_mult=unet_feat_mult,
+            feat_mult=unet_feat_mult, #TODO: what is per-level feature multiplier?
             nb_conv_per_level=nb_unet_conv_per_level,
             half_res=unet_half_res,
         )
@@ -221,7 +221,7 @@ class PCMC(LoadableModel):
         Conv = getattr(nn, 'Conv%dd' % ndims)
 
         # 16 > 4 > 4 > 2
-
+        # what is the preflow layer?
         preflow_layers = [4,4]
 
         print('preflow_layers =')
@@ -304,9 +304,6 @@ class PCMC(LoadableModel):
             if seg.dim() == 5:
                 seg = seg.permute(0, 4, 2, 3, 1)[:,:,:,:,0]
 
-
-
-
         # splitted to two input slices for converting to unet shape 
         unet_output = self.unet_model(x) 
         
@@ -350,6 +347,7 @@ class PCMC(LoadableModel):
         
         # ############ BASED MODEL DECODER ############
         unet_based_output = self.unet_based_T1(x) 
+        #? why it is 800?
         T1 = torch.tensor(800) - self.T1_head(unet_based_output)
         M0 = torch.tensor(180) - self.M0_head(unet_based_output)
 

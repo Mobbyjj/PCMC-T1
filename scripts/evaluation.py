@@ -46,6 +46,7 @@ if calc_flag:
 
         for i,p in enumerate(data_set['test_ind']):
             for s in range(5):
+                
                 moving_input = data_set['test_set_data'][i, :, :, :, s, np.newaxis][np.newaxis,...]
                 moving_input = torch.from_numpy(moving_input).to(device).float().permute(0, 4, 1, 2, 3)
 

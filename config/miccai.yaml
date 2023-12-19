@@ -1,9 +1,9 @@
 # miccai.yaml
 # paths
 path:
-  models_dir: models/
+  models_dir: /media/ssd/fanwen/T1mapping/Free_breathing/Model/
   load_model: None
-  data_dir_path: data/
+  data_dir_path: /media/ssd/fanwen/T1mapping/Free_breathing/
 
 # Hyperparameters for model training
 training:
@@ -19,11 +19,11 @@ arch:
 
 # Experiment and run settings
 experiment:
-  fold: 4 #1/2/3/4/5/'all'
-  date_ver: "temp_ver01"
+  fold: 1 #1/2/3/4/5/'all'
+  date_ver: "miccai"
   mode: "train"  # Options: train / overfit / solver
-  test_batch_size: 1
-  train_batch_size: 8
+  test_batch_size: 10
+  train_batch_size: 40
   savemodel: true  # Save the model: true or false
   epochs: 1000
   steps_per_epoch: 100
@@ -39,10 +39,11 @@ data_loader:
   mode: original_mat #original_mat or processed_npy
 
 evaluation:
-  models_path: models/
-  models_names: ['model_group_2602_ver05_KFold0_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_0',\
-                'model_group_2602_ver05_KFold1_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_1',\
-                'model_group_2602_ver05_KFold2_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_2',\
-                'model_group_2602_ver05_KFold3_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_3',\
-                'model_group_2602_ver05_KFold4_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_4']
+  models_path: /media/ssd/fanwen/T1mapping/Free_breathing/Model/
+  # models_names: ['model_group_2602_ver05_KFold0_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_0',\
+  #               'model_group_2602_ver05_KFold1_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_1',\
+  #               'model_group_2602_ver05_KFold2_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_2',\
+  #               'model_group_2602_ver05_KFold3_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_3',\
+  #               'model_group_2602_ver05_KFold4_l2_500.0_lr_0.002_MI_0_T1_1.0_DSC_1000.0_KFOLD_4']
+  models_names: ['model_MICCAI']
   

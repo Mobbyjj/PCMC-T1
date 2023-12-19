@@ -1,6 +1,10 @@
 import sys
+import os
 sys.path.append(os.getcwd())
 from src import metrics
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
 
 def analysis(test_set_data, test_set_segmentation, registered_seg_set, model_dir_path, registered_test_set, test_set_trigger_time, test_set_norm, t_reference=0,\
      full_r2_flag = 0, specific_case_flag = 0, full_dice_flag = 1, Hausdorff_flag = 1, save_flag = 0, show_specific_case_flag =0):
@@ -135,6 +139,20 @@ def create_T1_map(img, reference_mask, trigger_time):
         T1map[row, col], Rsq_map[row, col], _ = CalcT1_CurvFit(img[row, col,:], trigger_time, PlotFit=False)
     return T1map, Rsq_map
 
+def create_T1_map_CMRRecon(img, reference_mask, trigger_time):
+    lenX = img.shape[0]
+    lenY = img.shape[1]
+    T1map = np.zeros((lenX, lenY))-1    
+    Rsq_map = np.zeros((lenX, lenY))
+    numPixels = 0
+    RsquareSum = 0
+    relevant_pixels = np.stack(np.where(reference_mask != 0), axis=1)
+    for pixel_idx in range(relevant_pixels.shape[0]):
+        row = relevant_pixels[pixel_idx,0]
+        col = relevant_pixels[pixel_idx,1]
+        T1map[row, col], Rsq_map[row, col], _ = CalcT1_CurvFit_CMRRecon(img[row, col,:], trigger_time, PlotFit=False)
+    return T1map, Rsq_map
+
 
 # -----Calculate T1 Parameter For Given Pixel - Curve Fitting-----##
 def T1_func(x, M0, T1):
@@ -160,6 +178,62 @@ def CalcT1_CurvFit(pixel_sequence, TriggerTime, PlotFit=False):
         M0 = params[0] 
         T1 = params[1]
         S_fit = T1_func(t, M0, T1)
+
+        ## Calculate Regression Performance
+        Pearson_matrix = np.corrcoef(S, S_fit)
+        correlation_xy = Pearson_matrix[0, 1]
+        r_squared = correlation_xy ** 2
+        none_flag = 0
+
+        if np.isnan(r_squared):
+            T1, r_squared, Pearson_matrix = 0, 0, 0
+    
+
+    # if (PlotFit):  ## Plot Data with Curve Fit
+        # plt.figure()
+        # plt.scatter(t, S, label='Data')
+        # plt.plot(t, S_fit, c='r', label='Fitted T1 Function')
+        # plt.legend(loc='best')
+        # plt.grid()
+        # plt.ylabel('Image Level')
+        # plt.xlabel('time[ms]')
+        # plt.show()
+    if PlotFit:
+        return T1, r_squared, M0,t,S,S_fit
+    return T1, r_squared, M0
+
+def T1_func(x, M0, T1):
+    #return M0 * (1 - np.exp(-(1 / T1) * x))
+    return M0 * (1 - 2*np.exp(-(1 / T1) * x))
+    #return np.abs(M0 * (1 - 2*np.exp(-(1 / T1) * x)))
+
+def T1_func_CMRRecon(t: float, 
+                     M0: float, 
+                     B: float, 
+                     T1star: float) -> float:
+    """Model of signal intensity vs. time"""
+    return M0 - B * np.exp(-t / T1star)
+
+def CalcT1_CurvFit_CMRRecon(pixel_sequence, TriggerTime, PlotFit=False):
+    S = pixel_sequence.squeeze()
+    t = TriggerTime
+
+    # check if all the pixels in x,y cor through the time are equal
+    if len(set(S)) == 1:
+        T1, r_squared, Pearson_matrix = 0, 0, 0
+        M0 = 0
+        PlotFit = False
+    else:
+        params, params_covariance = optimize.curve_fit(T1_func_CMRRecon, 
+                                                       t, 
+                                                       S, 
+                                                       p0=[6, 3,1000],
+                                                       maxfev=10000,
+                                                       bounds=((0, 0, 0), (np.inf, np.inf, np.inf)),)
+        M0 = params[0]
+        B = params[1] 
+        T1 = params[2]
+        S_fit = T1_func_CMRRecon(t, M0, B, T1)
 
         ## Calculate Regression Performance
         Pearson_matrix = np.corrcoef(S, S_fit)
@@ -400,10 +474,32 @@ class Formatter(object):
 
 def main():
     # ***************** Loading *****************
-    train_set_data, train_set_trigger_time, train_set_segmentation, train_set_norm, \
-        test_set_data, test_set_trigger_time, test_set_segmentation, test_set_norm \
-            = LoadingImages.loading_test_train_set(load_mode='np_processed',K=4)
+    #train_set_data, train_set_trigger_time, train_set_segmentation, train_set_norm, \
+    #    test_set_data, test_set_trigger_time, test_set_segmentation, test_set_norm \
+    #        = LoadingImages.loading_test_train_set(load_mode='np_processed',K=4)
+    casename = 'P003_T1map'
+    CMRdir = '/media/ssd/fanwen/T1mapping/CMRRecon/TestSet'
+    imgdir = CMRdir + '/Imgs/' + casename + '.npy'
+    segdir = CMRdir + '/Segs/' + casename + '.npy'
+    trigger = CMRdir + '/Csvs/' + casename + '.xlsx'
+    img = np.load(imgdir)
+    seg = np.load(segdir)
+    trigger = pd.read_excel(trigger, header=None)
+    nslice = 0
+    img[:, :, nslice, :3] = img[:, :, nslice, :3] * (-1)
+    triggertime = np.array(trigger.iloc[1:, nslice+1].values.tolist())
+    seg4cal = seg[:,:,nslice]
+    seg4cal = np.expand_dims(seg4cal, axis=2)
+    seg4cal = np.repeat(seg4cal, 9, axis=2)
+    # get the seg4cal as 1 and 0 
+    seg4cals = np.zeros(seg4cal.shape)
+    seg4cals[seg4cal!=0] = 1
+    seg4cals = seg4cals.astype(np.uint8)
+    T1map,Rsq_map = create_T1_map_CMRRecon(img[:,:,nslice], seg4cals, triggertime)
+    
+    plt.imshow(T1map, cmap='jet', vmin=0, vmax=2000)
 
+    
 
 
 if __name__ == '__main__':
